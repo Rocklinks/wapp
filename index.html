@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sathya Messenger</title>
+<script src="/socket.io/socket.io.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ───────────────────────────────────────────────────────────────── */
+:root{
+  /* WhatsApp palette */
+  --wa-header:#202c33;--wa-sidebar:#111b21;--wa-hover:#2a3942;
+  --wa-active:#2a3942;--wa-chat-bg:#0b141a;--wa-input:#2a3942;
+  --wa-sent:#005c4b;--wa-recv:#202c33;--wa-green:#00a884;
+  --wa-green2:#25d366;--wa-blue:#53bdeb;--wa-text:#e9edef;
+  --wa-text2:#8696a0;--wa-text3:#667781;--wa-border:#2a3942;
+  --wa-tick:#8696a0;--wa-tick-blue:#53bdeb;--wa-bubble-tail:4px;
+  /* Google Messages palette */
+  --gm-bg:#1c1b1f;--gm-surface:#2b2930;--gm-surface2:#332f38;
+  --gm-sent:#4f378b;--gm-sent2:#6750a4;--gm-recv:#332f38;
+  --gm-text:#e6e0e9;--gm-text2:#cac4d0;--gm-text3:#938f99;
+  --gm-border:#49454f;--gm-purple:#d0bcff;--gm-chip:#4a4458;
+  --gm-input:#2b2930;--gm-fab:#d0bcff;--gm-fab-txt:#381e72;
+  /* shared */
+  --r:18px;--font:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#000;}
+
+/* ══ TOPBAR ═══════════════════════════════════════════════════════════════ */
+.topbar{
+  height:48px;display:flex;align-items:center;gap:12px;
+  padding:0 16px;background:var(--wa-header);border-bottom:1px solid #1f2c34;
+  flex-shrink:0;z-index:10;
+}
+.mypic{width:32px;height:32px;border-radius:50%;background:#2a3942;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--wa-green);}
+.mypic img{width:100%;height:100%;object-fit:cover;}
+.app-title{font-size:15px;font-weight:600;color:var(--wa-text);letter-spacing:-.3px;}
+.badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--wa-text2);padding:3px 8px;border-radius:12px;background:rgba(255,255,255,.05);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--wa-text3);}
+.dot.g{background:var(--wa-green2);box-shadow:0 0 6px var(--wa-green2);}
+.dot.o{background:#f97316;box-shadow:0 0 6px #f97316;}
+.sp{flex:1;}
+.tbtn{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #3d5260;background:transparent;color:var(--wa-text2);transition:all .2s;}
+.tbtn:hover{background:#2a3942;color:var(--wa-text);}
+.hidden{display:none!important;}
+
+/* ══ LAYOUT ═══════════════════════════════════════════════════════════════ */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WHATSAPP LEFT — exact WhatsApp Web look
+══════════════════════════════════════════════════════════════════════════ */
+.wa-panel{width:50%;display:flex;border-right:1px solid #1f2c34;background:var(--wa-sidebar);}
+
+/* sidebar */
+.wa-sb{width:72px;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;background:var(--wa-header);border-right:1px solid #1f2c34;}
+.nav-btn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none;color:var(--wa-text2);font-size:18px;transition:background .15s;position:relative;}
+.nav-btn:hover,.nav-btn.on{background:var(--wa-hover);color:var(--wa-text);}
+.nav-btn .nb{position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--wa-green2);border-radius:50%;border:2px solid var(--wa-header);}
+.nav-label{font-size:8px;color:var(--wa-text3);margin-top:2px;letter-spacing:.3px;text-transform:uppercase;}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
+
+/* contact list pane */
+.wa-list{width:calc(100% - 72px - 1px);display:flex;flex-direction:column;background:var(--wa-sidebar);}
+.wa-list-header{padding:10px 16px 8px;background:var(--wa-header);flex-shrink:0;}
+.wa-list-header h2{font-size:19px;font-weight:600;color:var(--wa-text);}
+.wa-srch{padding:6px 12px 8px;background:var(--wa-header);}
+.wa-srch input{width:100%;padding:8px 14px 8px 36px;background:#2a3942;border:none;border-radius:8px;color:var(--wa-text);font-size:13px;font-family:var(--font);}
+.wa-srch input::placeholder{color:var(--wa-text3);}
+.wa-srch input:focus{outline:none;}
+.wa-srch-wrap{position:relative;}
+.wa-srch-wrap .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--wa-text3);}
+.wa-pane{display:none;flex:1;overflow-y:auto;}
+.wa-pane.on{display:block;}
+.sec-lbl{font-size:11px;font-weight:600;letter-spacing:.8px;color:var(--wa-text3);padding:12px 16px 4px;text-transform:uppercase;}
+
+/* contact row — WhatsApp style */
+.ci{display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer;transition:background .1s;border-bottom:1px solid rgba(255,255,255,.03);}
+.ci:hover{background:var(--wa-hover);}
+.ci.on{background:var(--wa-active);}
+.ci-av{width:46px;height:46px;border-radius:50%;background:#2a3942;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;color:var(--wa-text);}
+.ci-av img{width:100%;height:100%;object-fit:cover;}
+.ci-av.agm{border:2px solid var(--wa-green);}
+.ci-av.bm{border:2px solid #53bdeb;}
+.ci-info{flex:1;min-width:0;}
+.ci-name{font-size:14px;font-weight:500;color:var(--wa-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-sub{font-size:12px;color:var(--wa-text3);margin-top:1px;}
+.ci-check input{width:17px;height:17px;accent-color:var(--wa-green);}
+
+/* bulk quick pane */
+.bq{padding:12px 16px;display:flex;flex-direction:column;gap:10px;}
+.bq-lbl{font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--wa-text3);text-transform:uppercase;}
+.qpills{display:flex;gap:6px;flex-wrap:wrap;}
+.qpill{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #3d5260;background:transparent;color:var(--wa-text2);transition:all .2s;}
+.qpill.on,.qpill:hover{background:var(--wa-green);color:#000;border-color:var(--wa-green);}
+.bsel-cnt{font-size:11px;color:var(--wa-text3);}
+.wa-abtn{padding:10px;background:var(--wa-green);color:#000;font-weight:700;font-size:13px;border:none;border-radius:10px;cursor:pointer;width:100%;font-family:var(--font);}
+.bulk-clist{max-height:260px;overflow-y:auto;}
+
+/* manage pane */
+.mpane{padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
+.mpane label{font-size:11px;color:var(--wa-text2);}
+.mpane input,.mpane select{width:100%;padding:8px 12px;background:#2a3942;border:1px solid #3d5260;border-radius:8px;color:var(--wa-text);font-size:13px;font-family:var(--font);}
+.mpane input:focus,.mpane select:focus{outline:none;border-color:var(--wa-green);}
+.dbtn{padding:4px 8px;background:none;border:1px solid #f85149;color:#f85149;border-radius:5px;font-size:10px;cursor:pointer;}
+
+/* ── chat area ── */
+.wa-chat{flex:1;display:flex;flex-direction:column;position:relative;background:var(--wa-chat-bg);}
+/* WhatsApp chat bg pattern */
+.wa-chat::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='%230b141a'/%3E%3Cpath d='M30 10c1 0 1.5.5 2 1l3 5c.5.8 1.5.8 2 0l3-5c.5-.8 1.5-.8 2 0l2 3c.5.8 0 1.8-.8 1.8H42l-3 5c-.5.8-1.5.8-2 0l-3-5h-2.2c-.8 0-1.3-1-.8-1.8l2-3c.5-.5 1-1 2-1z' fill='%230f1c22' opacity='.4'/%3E%3C/svg%3E");opacity:.4;pointer-events:none;}
+
+/* QR screen */
+.qr-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:1;position:relative;}
+.qr-card{background:#fff;padding:18px;border-radius:16px;box-shadow:0 0 0 1px rgba(0,168,132,.3),0 8px 40px rgba(0,168,132,.15);}
+.qr-card img{display:block;border-radius:4px;}
+.qr-spin{width:56px;height:56px;border:3px solid #2a3942;border-top-color:var(--wa-green);border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.qr-title{font-size:22px;font-weight:600;color:var(--wa-text);}
+.qr-sub{font-size:13px;color:var(--wa-text2);text-align:center;max-width:260px;line-height:1.5;}
+.qr-hint{font-size:11px;color:var(--wa-text3);}
+
+/* chat header */
+.chat-hdr{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--wa-header);flex-shrink:0;z-index:2;}
+.chat-hdr .av{width:38px;height:38px;border-radius:50%;background:#2a3942;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0;}
+.chat-hdr .av img{width:100%;height:100%;object-fit:cover;}
+.chat-hdr-info h3{font-size:15px;font-weight:500;color:var(--wa-text);}
+.chat-hdr-info p{font-size:12px;color:var(--wa-text3);}
+.chat-hdr-actions{margin-left:auto;display:flex;gap:4px;}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--wa-text2);}
+.icon-btn:hover{background:var(--wa-hover);}
+
+/* messages */
+.msgs{flex:1;overflow-y:auto;padding:16px 10%;display:flex;flex-direction:column;gap:2px;z-index:1;position:relative;}
+.msg-day{text-align:center;margin:8px 0;}
+.msg-day span{font-size:11px;color:var(--wa-text2);background:rgba(11,20,26,.8);padding:4px 10px;border-radius:8px;}
+.mb{max-width:65%;padding:6px 9px 4px;border-radius:8px;font-size:13.5px;line-height:1.5;word-break:break-word;position:relative;margin-bottom:2px;}
+.mb.s{background:var(--wa-sent);align-self:flex-end;border-bottom-right-radius:2px;}
+.mb.r{background:var(--wa-recv);align-self:flex-start;border-bottom-left-radius:2px;}
+.mb.s::after{content:'';position:absolute;bottom:0;right:-7px;border:7px solid transparent;border-bottom-color:var(--wa-sent);border-right:0;border-bottom-right-radius:2px;}
+.mb.r::after{content:'';position:absolute;bottom:0;left:-7px;border:7px solid transparent;border-bottom-color:var(--wa-recv);border-left:0;}
+.msg-sender{font-size:11px;font-weight:600;color:var(--wa-green2);margin-bottom:2px;}
+.msg-meta{display:flex;align-items:center;gap:3px;justify-content:flex-end;margin-top:2px;}
+.msg-time{font-size:10px;color:var(--wa-text3);}
+.tick{font-size:12px;color:var(--wa-tick);}
+.tick.blue{color:var(--wa-tick-blue);}
+/* media in bubbles */
+.mmedia{margin-bottom:3px;}
+.mmedia img{max-width:240px;max-height:200px;border-radius:6px;display:block;cursor:pointer;object-fit:cover;}
+.mmedia video{max-width:240px;border-radius:6px;display:block;}
+.mmedia audio{width:200px;}
+.doc-attach{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.06);border-radius:8px;cursor:pointer;text-decoration:none;color:var(--wa-text);min-width:180px;}
+.doc-icon{font-size:24px;}
+.doc-name{font-size:12px;font-weight:500;}
+.doc-ext{font-size:10px;color:var(--wa-text3);text-transform:uppercase;}
+
+/* input bar */
+.chat-inp{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--wa-header);z-index:2;flex-shrink:0;}
+.clip-btn{width:36px;height:36px;border-radius:50%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--wa-text2);}
+.clip-btn:hover{color:var(--wa-text);}
+.chat-inp-box{flex:1;padding:9px 14px;background:var(--wa-input);border-radius:22px;color:var(--wa-text);font-size:13.5px;border:none;font-family:var(--font);}
+.chat-inp-box::placeholder{color:var(--wa-text3);}
+.chat-inp-box:focus{outline:none;}
+.send-btn{width:40px;height:40px;border-radius:50%;background:var(--wa-green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.send-btn:hover{background:#00b896;}
+/* media preview strip */
+.mprev{padding:6px 14px;background:var(--wa-header);border-top:1px solid var(--wa-border);display:flex;align-items:center;gap:8px;}
+.mprev img{height:48px;border-radius:5px;}
+.mprev-name{font-size:12px;color:var(--wa-text2);}
+.mprev-rm{background:none;border:none;color:#f85149;cursor:pointer;font-size:16px;margin-left:auto;}
+
+/* bulk compose overlay */
+.bulk-ov{display:none;position:absolute;inset:0;background:var(--wa-chat-bg);z-index:20;flex-direction:column;}
+.bulk-ov.on{display:flex;}
+.bulk-ov-hdr{padding:12px 16px;background:var(--wa-header);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.bulk-ov-hdr h3{font-size:16px;font-weight:600;color:var(--wa-text);flex:1;}
+.bulk-ov-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;}
+.bulk-ov-body label{font-size:11px;font-weight:600;color:var(--wa-text3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;}
+.bulk-ov-body textarea{width:100%;min-height:100px;padding:12px;background:var(--wa-input);border:1px solid #3d5260;border-radius:10px;color:var(--wa-text);font-size:13px;resize:vertical;font-family:var(--font);}
+.bulk-ov-body textarea:focus{outline:none;border-color:var(--wa-green);}
+.bulk-ov-body input[type=datetime-local]{width:100%;padding:9px 12px;background:var(--wa-input);border:1px solid #3d5260;border-radius:10px;color:var(--wa-text);font-size:13px;font-family:var(--font);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{padding:4px 10px;background:#2a3942;border:1px solid #3d5260;border-radius:16px;font-size:12px;color:var(--wa-text);display:flex;align-items:center;gap:5px;}
+.chip-rm{cursor:pointer;color:var(--wa-text3);font-size:11px;}
+.chip-rm:hover{color:#f85149;}
+.prog-list{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.pi{display:flex;align-items:center;gap:7px;font-size:12px;padding:5px 8px;background:rgba(255,255,255,.04);border-radius:6px;}
+
+/* groups pane */
+.grp-row{display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer;transition:background .1s;border-bottom:1px solid rgba(255,255,255,.03);}
+.grp-row:hover{background:var(--wa-hover);}
+.grp-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#005c4b,#00a884);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GOOGLE MESSAGES RIGHT
+══════════════════════════════════════════════════════════════════════════ */
+.sms-panel{width:50%;display:flex;flex-direction:column;background:var(--gm-bg);}
+
+/* sms top bar */
+.sms-topbar{height:64px;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--gm-bg);flex-shrink:0;}
+.sms-topbar h1{font-size:22px;font-weight:400;color:var(--gm-text);letter-spacing:-.3px;}
+.sms-topbar .sp{flex:1;}
+.gm-icon-btn{width:40px;height:40px;border-radius:50%;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--gm-text2);}
+.gm-icon-btn:hover{background:rgba(255,255,255,.08);}
+
+/* search */
+.gm-srch{padding:4px 16px 10px;}
+.gm-srch input{width:100%;padding:10px 18px;background:var(--gm-surface2);border:none;border-radius:24px;color:var(--gm-text);font-size:14px;font-family:var(--font);}
+.gm-srch input::placeholder{color:var(--gm-text3);}
+.gm-srch input:focus{outline:none;}
+
+/* sms tabs — Material You pill style */
+.gm-tabs{display:flex;gap:6px;padding:0 16px 10px;}
+.gm-tab{flex:1;padding:8px 6px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--gm-text3);transition:all .2s;font-family:var(--font);}
+.gm-tab.on{background:var(--gm-chip);color:var(--gm-purple);font-weight:600;}
+
+/* sms pane */
+.sms-pane{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.sms-pane.on{display:flex;}
+
+/* individual — conversation list style */
+.sms-conv-list{flex:1;overflow-y:auto;}
+.sms-conv{display:flex;align-items:center;gap:14px;padding:10px 20px;cursor:pointer;transition:background .1s;border-radius:0;}
+.sms-conv:hover,.sms-conv.on{background:rgba(208,188,255,.08);}
+.sms-conv-av{width:44px;height:44px;border-radius:50%;background:var(--gm-surface2);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:var(--gm-text);}
+.sms-conv-av img{width:100%;height:100%;object-fit:cover;}
+.sms-conv-av.agm{background:linear-gradient(135deg,#4f378b,#7965af);}
+.sms-conv-av.bm{background:linear-gradient(135deg,#1565c0,#42a5f5);}
+.sms-conv-info{flex:1;min-width:0;}
+.sms-conv-name{font-size:14px;font-weight:500;color:var(--gm-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sms-conv-phone{font-size:12px;color:var(--gm-text3);margin-top:1px;}
+
+/* sms compose sheet (bottom) */
+.sms-compose{padding:12px 16px;background:var(--gm-surface);border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+.sms-to{font-size:12px;color:var(--gm-text3);margin-bottom:4px;}
+.sms-to-name{font-size:14px;font-weight:500;color:var(--gm-purple);margin-bottom:10px;}
+.sms-inp-row{display:flex;align-items:flex-end;gap:8px;}
+.sms-textarea{flex:1;padding:10px 16px;background:var(--gm-surface2);border:1.5px solid var(--gm-border);border-radius:22px;color:var(--gm-text);font-size:13.5px;resize:none;font-family:var(--font);min-height:42px;max-height:100px;line-height:1.4;}
+.sms-textarea:focus{outline:none;border-color:var(--gm-purple);}
+.sms-send-btn{width:42px;height:42px;border-radius:50%;background:var(--gm-sent2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sms-send-btn:hover{background:#7965af;}
+
+/* bulk sms */
+.sms-bulk{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+.sms-bulk-lbl{font-size:11px;font-weight:600;color:var(--gm-text3);text-transform:uppercase;letter-spacing:.5px;}
+.gm-pills{display:flex;gap:7px;flex-wrap:wrap;}
+.gm-pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--gm-border);background:transparent;color:var(--gm-text3);transition:all .2s;font-family:var(--font);}
+.gm-pill.on{background:var(--gm-chip);color:var(--gm-purple);border-color:var(--gm-sent2);}
+.sms-bulk-cnt{font-size:11px;color:var(--gm-text3);}
+.sms-bulk textarea{width:100%;min-height:90px;padding:12px 16px;background:var(--gm-surface2);border:1.5px solid var(--gm-border);border-radius:14px;color:var(--gm-text);font-size:13px;resize:vertical;font-family:var(--font);}
+.sms-bulk textarea:focus{outline:none;border-color:var(--gm-purple);}
+.sms-bulk input[type=datetime-local]{width:100%;padding:9px 14px;background:var(--gm-surface2);border:1.5px solid var(--gm-border);border-radius:14px;color:var(--gm-text);font-size:13px;font-family:var(--font);}
+.sms-bulk-btn{padding:12px;background:var(--gm-sent2);color:#fff;font-weight:600;font-size:14px;border:none;border-radius:24px;cursor:pointer;font-family:var(--font);}
+.sms-bulk-btn:hover{background:#7965af;}
+/* FAB */
+.gm-fab{position:absolute;bottom:20px;right:20px;width:56px;height:56px;border-radius:16px;background:var(--gm-fab);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gm-fab-txt);box-shadow:0 3px 12px rgba(0,0,0,.4);}
+
+/* sms log */
+.sms-log{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:6px;}
+.sli{padding:10px 14px;background:var(--gm-surface);border-radius:12px;border-left:3px solid var(--gm-sent2);}
+.sli-to{font-size:13px;font-weight:500;color:var(--gm-purple);}
+.sli-msg{font-size:12px;color:var(--gm-text3);margin-top:2px;}
+.sli-st{font-size:10px;margin-top:4px;}
+.ok{color:#4caf50;}.er{color:#f85149;}
+
+/* ══ MODAL ════════════════════════════════════════════════════════════════ */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;}
+.mo.on{display:flex;}
+.md{background:#1c2b33;border:1px solid #2a3942;border-radius:18px;padding:22px;width:380px;max-height:75vh;overflow-y:auto;}
+.md h3{font-size:16px;font-weight:600;color:var(--wa-text);margin-bottom:14px;}
+.md input{width:100%;padding:9px 13px;background:#2a3942;border:1px solid #3d5260;border-radius:9px;color:var(--wa-text);font-size:13px;font-family:var(--font);margin-bottom:10px;}
+.md input:focus{outline:none;border-color:var(--wa-green);}
+.md-btns{display:flex;gap:8px;margin-top:8px;}
+.md-btns button{flex:1;padding:9px;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:var(--font);}
+.md-cancel{background:none;border:1px solid #3d5260;color:var(--wa-text2);}
+.mclist{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+
+/* ══ TOAST ════════════════════════════════════════════════════════════════ */
+.tc{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.t{padding:10px 18px;border-radius:24px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(0,0,0,.5);animation:ti .25s ease;white-space:nowrap;}
+.t.s{background:rgba(0,168,132,.9);color:#fff;}
+.t.e{background:rgba(248,81,73,.9);color:#fff;}
+.t.i{background:rgba(83,189,235,.9);color:#000;}
+@keyframes ti{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* lightbox */
+#lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;align-items:center;justify-content:center;cursor:zoom-out;}
+#lb.on{display:flex;}
+#lb img{max-width:90vw;max-height:90vh;border-radius:8px;}
+
+/* scrollbars */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#2a3942;border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#3d5260;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="mypic" id="mypic">👤</div>
+  <div class="app-title">Sathya Messenger</div>
+  <div class="badge"><div class="dot" id="wdot"></div><span id="wst">Connecting…</span></div>
+  <div class="badge"><div class="dot o"></div><span>SMS</span></div>
+  <div class="sp"></div>
+  <button class="tbtn hidden" id="wdbtn" onclick="waLogout()">Disconnect WA</button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ══════════ WHATSAPP LEFT ══════════ -->
+<div class="wa-panel">
+
+  <!-- icon nav -->
+  <div class="wa-sb">
+    <div class="nav-item">
+      <button class="nav-btn on" id="nb-chats" onclick="wNav('chats',this)" title="Chats">💬</button>
+    </div>
+    <div class="nav-item" style="margin-top:4px">
+      <button class="nav-btn" id="nb-groups" onclick="wNav('groups',this)" title="Groups">👥</button>
+    </div>
+    <div class="nav-item" style="margin-top:4px">
+      <button class="nav-btn" id="nb-bulk" onclick="wNav('bulk',this)" title="Bulk Send">📤</button>
+    </div>
+    <div class="nav-item" style="margin-top:4px">
+      <button class="nav-btn" id="nb-manage" onclick="wNav('manage',this)" title="Manage">⚙️</button>
+    </div>
+  </div>
+
+  <!-- contact list -->
+  <div class="wa-list">
+    <div class="wa-list-header"><h2>Messages</h2></div>
+    <div class="wa-srch">
+      <div class="wa-srch-wrap">
+        <span class="si">🔍</span>
+        <input placeholder="Search or start new chat" oninput="filterC(this.value)" id="csrch">
+      </div>
+    </div>
+
+    <!-- chats pane -->
+    <div class="wa-pane on" id="wp-chats">
+      <div class="sec-lbl">AGMs</div>
+      <div id="agm-list"></div>
+      <div class="sec-lbl">Branch Managers</div>
+      <div id="bm-list"></div>
+    </div>
+
+    <!-- groups pane — shows WA groups from phone -->
+    <div class="wa-pane" id="wp-groups">
+      <div style="padding:10px 16px"><button class="wa-abtn" onclick="openGModal()">＋ Create Custom Group</button></div>
+      <div class="sec-lbl">Your WhatsApp Groups</div>
+      <div id="wa-groups-list"></div>
+      <div class="sec-lbl">Custom Groups</div>
+      <div id="grp-list"></div>
+    </div>
+
+    <!-- bulk pane -->
+    <div class="wa-pane" id="wp-bulk">
+      <div class="bq">
+        <div class="bq-lbl">Quick Select</div>
+        <div class="qpills">
+          <button class="qpill" onclick="qSel('bms',this)">All BMs</button>
+          <button class="qpill" onclick="qSel('agms',this)">All AGMs</button>
+          <button class="qpill" onclick="qSel('all',this)">Everyone</button>
+          <button class="qpill" onclick="clrSel()">Clear</button>
+        </div>
+        <div class="bq-lbl" style="margin-top:4px">Manual Pick</div>
+        <div class="bulk-clist" id="bulk-clist"></div>
+        <div class="bsel-cnt" id="bsel-cnt">0 selected</div>
+        <button class="wa-abtn" onclick="openBulk()">📤 Compose Bulk Message</button>
+      </div>
+    </div>
+
+    <!-- manage pane -->
+    <div class="wa-pane" id="wp-manage">
+      <div class="mpane">
+        <div class="sec-lbl" style="padding:0 0 6px">Add Contact</div>
+        <label>Name</label><input id="nn" placeholder="e.g. Madurai BM">
+        <label>Phone</label><input id="np" placeholder="+91XXXXXXXXXX">
+        <label>Role</label>
+        <select id="nr" style="width:100%;padding:8px 12px;background:#2a3942;border:1px solid #3d5260;border-radius:8px;color:var(--wa-text);font-size:13px;font-family:var(--font)">
+          <option value="BM">BM</option><option value="AGM">AGM</option>
+        </select>
+        <button class="wa-abtn" style="margin-top:4px" onclick="addC()">Add Contact</button>
+        <div class="sec-lbl" style="padding:8px 0 6px">All Contacts</div>
+        <div id="manage-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- chat area -->
+  <div class="wa-chat" id="wa-chat">
+
+    <!-- QR screen -->
+    <div class="qr-screen" id="qr-screen">
+      <div class="qr-spin" id="qr-spin"></div>
+      <div class="qr-card hidden" id="qr-card"><img id="qr-img" width="240" height="240"></div>
+      <div class="qr-title">Sathya Messenger</div>
+      <div class="qr-sub">Open WhatsApp on your phone → Linked Devices → Link a Device → scan</div>
+      <div class="qr-hint" id="qr-hint">Generating QR code…</div>
+    </div>
+
+    <!-- active chat (hidden until connected) -->
+    <div class="hidden" id="wa-active" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="chat-hdr">
+        <div class="av" id="chat-av">?</div>
+        <div class="chat-hdr-info">
+          <h3 id="chat-name">—</h3>
+          <p id="chat-sub"></p>
+        </div>
+        <div class="chat-hdr-actions">
+          <button class="icon-btn" onclick="openExport()" title="Export to Excel">📊</button>
+        </div>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="mprev hidden" id="mprev">
+        <img id="mprev-img"><span class="mprev-name" id="mprev-name"></span>
+        <button class="mprev-rm" onclick="clearMedia()">✕</button>
+      </div>
+      <div class="chat-inp">
+        <button class="clip-btn" onclick="document.getElementById('fi').click()">📎</button>
+        <input type="file" id="fi" accept="image/*,video/*,audio/*,.pdf,.docx,.xlsx,.zip" onchange="onFile(this)" style="display:none">
+        <input class="chat-inp-box" type="text" id="minp" placeholder="Type a message" onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMsg()">
+        <button class="send-btn" onclick="sendMsg()">➤</button>
+      </div>
+    </div>
+
+    <!-- bulk overlay -->
+    <div class="bulk-ov" id="bulk-ov">
+      <div class="bulk-ov-hdr">
+        <button class="icon-btn" onclick="closeBulk()">✕</button>
+        <h3>Bulk WhatsApp</h3>
+        <span style="font-size:12px;color:var(--wa-text3)" id="bovcnt"></span>
+      </div>
+      <div class="bulk-ov-body">
+        <div><label>Recipients</label><div class="chips" id="bchips"></div></div>
+        <div><label>Message</label><textarea id="bmsg" placeholder="Type your message…" rows="5"></textarea></div>
+        <div><label>Attach media (optional)</label>
+          <input type="file" id="bbf" accept="image/*,video/*,.pdf" onchange="onBFile(this)" style="color:var(--wa-text2);font-size:12px">
+          <div id="bfn" style="font-size:11px;color:var(--wa-green);margin-top:4px"></div>
+        </div>
+        <div><label>Schedule (blank = send now)</label><input type="datetime-local" id="bdt" style="color:var(--wa-text);"></div>
+        <button class="wa-abtn" onclick="doBulk()">📤 Send / Schedule</button>
+        <div class="prog-list" id="bprog"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- end wa-panel -->
+
+<!-- ══════════ GOOGLE MESSAGES RIGHT ══════════ -->
+<div class="sms-panel" style="position:relative;">
+  <div class="sms-topbar">
+    <h1>Messages</h1>
+    <div class="sp"></div>
+    <button class="gm-icon-btn" onclick="testGw()" title="Test Gateway">⚡</button>
+  </div>
+  <div class="gm-srch"><input placeholder="Search contacts" oninput="filterSms(this.value)"></div>
+  <div class="gm-tabs">
+    <button class="gm-tab on" onclick="sTab('ind',this)">Individual</button>
+    <button class="gm-tab" onclick="sTab('bulk',this)">Bulk</button>
+    <button class="gm-tab" onclick="sTab('log',this)">Log</button>
+  </div>
+
+  <!-- individual -->
+  <div class="sms-pane on" id="sp-ind">
+    <div class="sms-conv-list" id="sms-conv-list"></div>
+    <div class="sms-compose">
+      <div class="sms-to">To:</div>
+      <div class="sms-to-name" id="ssel">Select a contact above</div>
+      <div class="sms-inp-row">
+        <textarea class="sms-textarea" id="smsg" placeholder="SMS message…" rows="1"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSmsI();}"></textarea>
+        <button class="sms-send-btn" onclick="sendSmsI()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- bulk -->
+  <div class="sms-pane" id="sp-bulk">
+    <div class="sms-bulk">
+      <div class="sms-bulk-lbl">Quick Select</div>
+      <div class="gm-pills">
+        <button class="gm-pill" onclick="sSmsGrp('bms',this)">All BMs</button>
+        <button class="gm-pill" onclick="sSmsGrp('agms',this)">All AGMs</button>
+        <button class="gm-pill" onclick="sSmsGrp('all',this)">Everyone</button>
+      </div>
+      <div class="sms-bulk-cnt" id="sbsel">0 selected</div>
+      <div><div class="sms-bulk-lbl">Message</div><textarea id="sbmsg" placeholder="Type your SMS…" rows="5"></textarea></div>
+      <div><div class="sms-bulk-lbl">Schedule (optional)</div><input type="datetime-local" id="sbdt" style="color:var(--gm-text)"></div>
+      <button class="sms-bulk-btn" onclick="sendBulkSms()">📨 Send Bulk SMS</button>
+      <div class="prog-list" id="sprog"></div>
+    </div>
+  </div>
+
+  <!-- log -->
+  <div class="sms-pane" id="sp-log">
+    <div class="sms-log" id="slog">
+      <div style="text-align:center;padding:40px;color:var(--gm-text3);font-size:13px;">No messages yet</div>
+    </div>
+  </div>
+</div><!-- end sms-panel -->
+
+</div><!-- end main -->
+
+<!-- lightbox -->
+<div id="lb" onclick="this.classList.remove('on')"><img id="lbimg"></div>
+
+<!-- toast -->
+<div class="tc" id="tc"></div>
+
+<!-- export modal -->
+<div class="mo" id="exp-mo">
+  <div class="md" style="width:340px">
+    <h3>📊 Export Group Messages</h3>
+    <div style="font-size:12px;color:var(--wa-text2);margin-bottom:12px" id="exp-grp-name"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="qpill" onclick="setRange('today')">Today</button>
+      <button class="qpill" onclick="setRange('7')">Last 7 days</button>
+      <button class="qpill" onclick="setRange('30')">Last 30 days</button>
+      <button class="qpill" onclick="setRange('all')">All</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <div>
+        <div style="font-size:11px;color:var(--wa-text3);margin-bottom:3px">From</div>
+        <input type="date" id="exp-from" style="width:100%;padding:8px;background:#2a3942;border:1px solid #3d5260;border-radius:8px;color:var(--wa-text);font-family:var(--font)">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--wa-text3);margin-bottom:3px">To</div>
+        <input type="date" id="exp-to" style="width:100%;padding:8px;background:#2a3942;border:1px solid #3d5260;border-radius:8px;color:var(--wa-text);font-family:var(--font)">
+      </div>
+    </div>
+    <div class="md-btns">
+      <button class="md-cancel" onclick="closeMo('exp-mo')">Cancel</button>
+      <button class="wa-abtn" style="border-radius:9px" onclick="doExport()">⬇ Download Excel</button>
+    </div>
+  </div>
+</div>
+<div class="mo" id="expmo">
+  <div class="md">
+    <h3>📊 Export Chat to Excel</h3>
+    <div style="font-size:11px;color:var(--wa-text2);margin-bottom:8px">Contact: <span id="exp-name" style="color:var(--wa-green)"></span></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="qpill" onclick="setExpRange('today',this)" style="flex:1">Today</button>
+      <button class="qpill" onclick="setExpRange('week',this)" style="flex:1">Week</button>
+      <button class="qpill" onclick="setExpRange('all',this)" style="flex:1">All</button>
+    </div>
+    <div style="font-size:11px;color:var(--wa-text2);margin-bottom:4px">From</div>
+    <input type="datetime-local" id="exp-from" style="color:var(--wa-text);margin-bottom:8px">
+    <div style="font-size:11px;color:var(--wa-text2);margin-bottom:4px">To</div>
+    <input type="datetime-local" id="exp-to" style="color:var(--wa-text);margin-bottom:8px">
+    <div style="font-size:11px;color:var(--wa-text2);margin-bottom:4px">Max messages (max 500)</div>
+    <input type="number" id="exp-limit" value="500" min="1" max="500" style="color:var(--wa-text);margin-bottom:10px">
+    <div class="md-btns">
+      <button class="md-cancel" onclick="closeMo('expmo')">Cancel</button>
+      <button class="wa-abtn" style="border-radius:9px" onclick="doExport()">⬇ Download</button>
+    </div>
+  </div>
+</div>
+<div class="mo" id="gmo">
+  <div class="md">
+    <h3>Create Group</h3>
+    <input id="gname" placeholder="Group name">
+    <div style="font-size:11px;color:var(--wa-text2);margin-bottom:6px">Select members</div>
+    <div class="mclist" id="mclist"></div>
+    <div class="md-btns">
+      <button class="md-cancel" onclick="closeMo()">Cancel</button>
+      <button class="wa-abtn" style="border-radius:9px" onclick="createGrp()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let C={agms:[],bms:[],groups:[]},AC=[];
+let chat=null,hist={},bulkSel=new Set(),smsSel=new Set(),smsCur=null;
+let waOk=false,upPath=null,bulkFPath=null,lastQR=null;
+
+// ── USER ID via browser localStorage ─────────────────────────────────────────
+let userId=localStorage.getItem('sm_uid');
+if(!userId){userId=crypto.randomUUID();localStorage.setItem('sm_uid',userId);}
+
+// ── SOCKET ────────────────────────────────────────────────────────────────────
+const io=window.io();
+io.on('connect',()=>io.emit('init',userId));
+
+io.on('contacts',d=>{C=d;AC=[...d.agms,...d.bms];renderAll();});
+
+io.on('wa:qr',url=>{
+  lastQR=url;waOk=false;
+  document.getElementById('qr-spin').classList.add('hidden');
+  const qc=document.getElementById('qr-card');qc.classList.remove('hidden');
+  document.getElementById('qr-img').src=url;
+  document.getElementById('qr-hint').textContent='Scan with WhatsApp to connect';
+  setWst('','Scan QR');
+});
+
+io.on('wa:ready',info=>{
+  waOk=true;
+  document.getElementById('qr-screen').classList.add('hidden');
+  document.getElementById('wa-active').classList.remove('hidden');
+  setWst('g',info.name?'✓ '+info.name:'Connected');
+  document.getElementById('wdbtn').classList.remove('hidden');
+  const mp=document.getElementById('mypic');
+  if(info.pic)mp.innerHTML=`<img src="${info.pic}" onerror="this.parentNode.textContent='👤'">`;
+  else mp.textContent=(info.name||'').charAt(0)||'👤';
+  toast('WhatsApp connected','s');
+  if(Notification.permission==='default')Notification.requestPermission();
+});
+
+io.on('wa:disconnected',r=>{
+  waOk=false;
+  document.getElementById('mypic').innerHTML='👤';
+  document.getElementById('qr-screen').classList.remove('hidden');
+  document.getElementById('wa-active').classList.add('hidden');
+  document.getElementById('qr-spin').classList.remove('hidden');
+  document.getElementById('qr-card').classList.add('hidden');
+  document.getElementById('wdbtn').classList.add('hidden');
+  document.getElementById('qr-hint').textContent='Generating new QR…';
+  const msgs={idle_3days:'Session expired (3 days idle) — scan again',manual:'Logged out — scan to reconnect'};
+  setWst('',msgs[r]||'Reconnecting…');
+  if(r!=='manual'&&r!=='idle_3days')toast('Reconnecting…','i');
+  else toast(msgs[r]||'Disconnected','i');
+});
+
+io.on('wa:qr_fail',()=>{
+  toast('QR failed — generating new one…','e');
+  document.getElementById('qr-card').classList.add('hidden');
+  document.getElementById('qr-spin').classList.remove('hidden');
+  document.getElementById('qr-hint').textContent='Generating new QR…';
+});
+
+io.on('wa:pic',({id,url})=>{
+  const c=AC.find(x=>x.id===id);if(c)c.avatar=url;
+  document.querySelectorAll(`[data-av="${id}"]`).forEach(el=>{
+    el.innerHTML=`<img src="${url}" onerror="this.parentNode.textContent='${el.dataset.init||'?'}'">`;
+  });
+  if(chat&&chat.id===id){
+    const a=document.getElementById('chat-av');
+    a.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+});
+
+io.on('wa:msg',msg=>{
+  const key=msg.fromMe?msg.to.replace('@c.us',''):msg.from.replace('@c.us','');
+  if(!hist[key])hist[key]=[];hist[key].push(msg);
+  const phone='+'+key;
+  if(chat&&(chat.phone===phone||chat.phone===key))addMsg(msg);
+  if(!msg.fromMe)waToast(msg.name,msg.body);
+});
+
+io.on('wa:ack',({id,ack})=>{
+  const el=document.querySelector(`[data-mid="${id}"] .tick`);if(!el)return;
+  el.className='tick';
+  if(ack===1){el.textContent='✓';}
+  else if(ack===2){el.textContent='✓✓';}
+  else if(ack===3){el.textContent='✓✓';el.classList.add('blue');}
+});
+
+io.on('wa:sent',({to,success,error})=>{if(success)toast('Sent ✓','s');else toast('Failed: '+error,'e');});
+io.on('wa:bulk_prog',({phone,success,error})=>{const n=getName(phone);addProg('bprog',n,success,error);toast((success?'✓ ':'✗ ')+n,success?'s':'e');});
+io.on('wa:bulk_done',()=>toast('Bulk WhatsApp done!','s'));
+io.on('wa:scheduled',({datetime,count})=>{toast(`Scheduled ${count} msgs → ${fmtDt(datetime)}`,'i');closeBulk();});
+io.on('sms:sent',({to,success,error})=>{
+  const n=getName(to);
+  addSmsLog(n,to,document.getElementById('smsg').value,success,error);
+  toast(success?'SMS sent ✓':'SMS failed: '+error,success?'s':'e');
+});
+io.on('sms:bulk_prog',({phone,success,error})=>{
+  const n=getName(phone);
+  addProg('sprog',n,success,error);
+  addSmsLog(n,phone,document.getElementById('sbmsg').value,success,error);
+});
+io.on('sms:bulk_done',()=>toast('Bulk SMS done!','s'));
+io.on('sms:scheduled',({datetime,count})=>toast(`SMS Scheduled ${count} → ${fmtDt(datetime)}`,'i'));
+io.on('err',m=>toast(m,'e'));
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll(){renderContacts();renderGroups();renderBulkList();renderSmsContacts();renderManage();}
+
+function mkAv(c,cls='ci-av'){
+  const role=c.role==='AGM'?'agm':'bm';
+  const init=c.name.charAt(0).toUpperCase();
+  const img=c.avatar?`<img src="${c.avatar}" onerror="this.parentNode.textContent='${init}'">`:`${init}`;
+  return `<div class="${cls} ${role}" data-av="${c.id}" data-init="${init}">${img}</div>`;
+}
+
+function renderContacts(){
+  const enc=c=>JSON.stringify(c).replace(/"/g,"'");
+  document.getElementById('agm-list').innerHTML=C.agms.map(c=>`
+    <div class="ci" onclick="openChat(${enc(c)})" data-cid="${c.id}">
+      ${mkAv(c)}
+      <div class="ci-info"><div class="ci-name">${c.name}</div><div class="ci-sub">${c.phone}</div></div>
+    </div>`).join('');
+  document.getElementById('bm-list').innerHTML=C.bms.map(c=>`
+    <div class="ci" onclick="openChat(${enc(c)})" data-cid="${c.id}">
+      ${mkAv(c)}
+      <div class="ci-info"><div class="ci-name">${c.name}</div><div class="ci-sub">${c.phone}</div></div>
+    </div>`).join('');
+}
+
+function renderGroups(){
+  document.getElementById('grp-list').innerHTML=C.groups.map(g=>`
+    <div class="grp-row" onclick="openGrp(${JSON.stringify(g).replace(/"/g,"'")})">
+      <div class="grp-av">👥</div>
+      <div class="ci-info"><div class="ci-name">${g.name}</div><div class="ci-sub">${g.members.length} members</div></div>
+    </div>`).join('');
+}
+
+function renderBulkList(){
+  document.getElementById('bulk-clist').innerHTML=AC.map(c=>`
+    <div class="ci" id="bc-${c.id}" onclick="toggleBulk('${c.id}',this)">
+      ${mkAv(c)}
+      <div class="ci-info"><div class="ci-name">${c.name}</div><div class="ci-sub">${c.role}</div></div>
+      <div class="ci-check"><input type="checkbox" id="bck-${c.id}" onclick="event.stopPropagation()"></div>
+    </div>`).join('');
+  updBCnt();
+}
+
+function renderSmsContacts(){
+  document.getElementById('sms-conv-list').innerHTML=AC.map(c=>`
+    <div class="sms-conv" id="sc-${c.id}" onclick="selSmsC(${JSON.stringify(c).replace(/"/g,"'")})">
+      ${mkAv(c,'sms-conv-av')}
+      <div class="sms-conv-info"><div class="sms-conv-name">${c.name}</div><div class="sms-conv-phone">${c.phone}</div></div>
+    </div>`).join('');
+}
+
+function renderManage(){
+  document.getElementById('manage-list').innerHTML=AC.map(c=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #2a3942">
+      ${mkAv(c)}
+      <div style="flex:1;font-size:12px"><div style="color:var(--wa-text)">${c.name}</div><div style="color:var(--wa-text3)">${c.phone}</div></div>
+      <button class="dbtn" onclick="removeC('${c.id}')">Remove</button>
+    </div>`).join('');
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+function openChat(c){
+  if(typeof c==='string')c=JSON.parse(c.replace(/'/g,'"'));
+  chat={...c,type:'individual'};
+  showActiveChat();
+  document.getElementById('chat-name').textContent=c.name;
+  document.getElementById('chat-sub').textContent=c.phone;
+  const a=document.getElementById('chat-av');
+  a.className=`av ${c.role==='AGM'?'agm':'bm'}`;
+  a.innerHTML=c.avatar?`<img src="${c.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(c.name.charAt(0));
+  const m=document.getElementById('msgs');m.innerHTML='';
+  (hist[c.phone.replace('+','')]||[]).forEach(addMsg);
+  document.querySelectorAll('.ci').forEach(el=>el.classList.remove('on'));
+  document.querySelector(`[data-cid="${c.id}"]`)?.classList.add('on');
+}
+
+function openGrp(g){
+  if(typeof g==='string')g=JSON.parse(g.replace(/'/g,'"'));
+  chat={...g,type:'group'};
+  showActiveChat();
+  document.getElementById('chat-name').textContent=g.name;
+  document.getElementById('chat-sub').textContent=g.members.length+' members';
+  const a=document.getElementById('chat-av');a.className='av';a.textContent='👥';
+  document.getElementById('msgs').innerHTML='';
+}
+
+function showActiveChat(){
+  if(!waOk)return toast('Connect WhatsApp first','e');
+  document.getElementById('qr-screen').classList.add('hidden');
+  document.getElementById('wa-active').classList.remove('hidden');
+  document.getElementById('bulk-ov').classList.remove('on');
+}
+
+function addMsg(msg){
+  const area=document.getElementById('msgs');
+  const d=document.createElement('div');
+  d.className=`mb ${msg.fromMe?'s':'r'}`;
+  d.setAttribute('data-mid',msg.id||'');
+  let med='';
+  if(msg.media){
+    const mt=msg.media.mimetype||'';
+    const src=`data:${mt};base64,${msg.media.data}`;
+    if(mt.startsWith('image/'))
+      med=`<div class="mmedia"><img src="${src}" loading="lazy" onclick="openLB(this.src)"></div>`;
+    else if(mt.startsWith('video/'))
+      med=`<div class="mmedia"><video src="${src}" controls preload="metadata"></video></div>`;
+    else if(mt.startsWith('audio/'))
+      med=`<div class="mmedia"><audio src="${src}" controls></audio></div>`;
+    else{
+      const fname=msg.media.filename||'Document';
+      const ext=fname.split('.').pop().toUpperCase();
+      const icon={'PDF':'📄','DOCX':'📝','DOC':'📝','XLSX':'📊','XLS':'📊','ZIP':'🗜️','APK':'📦'}[ext]||'📎';
+      const blob=b64Blob(msg.media.data,mt);
+      const url=URL.createObjectURL(blob);
+      med=`<div class="mmedia"><a class="doc-attach" href="${url}" download="${fname}" target="_blank"><span class="doc-icon">${icon}</span><div><div class="doc-name">${fname}</div><div class="doc-ext">${ext}</div></div></a></div>`;
+    }
+  }
+  const ts=new Date((msg.timestamp||Date.now()/1000)*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const tk=msg.fromMe?'<span class="tick">✓</span>':'';
+  d.innerHTML=`${med}${msg.body?`<div>${msg.body}</div>`:''}${`<div class="msg-meta"><span class="msg-time">${ts}</span>${tk}</div>`}`;
+  area.appendChild(d);area.scrollTop=area.scrollHeight;
+}
+
+function sendMsg(){
+  if(!waOk)return toast('WhatsApp not connected','e');
+  const inp=document.getElementById('minp');
+  const msg=inp.value.trim();
+  if(!msg&&!upPath)return;
+  if(!chat)return;
+  if(chat.type==='group'){
+    const grp=C.groups.find(g=>g.id===chat.id);
+    const phones=(grp?.members||[]).map(id=>AC.find(c=>c.id===id)?.phone).filter(Boolean);
+    io.emit('wa:bulk',{recipients:phones,message:msg,mediaPath:upPath,delay:1500});
+  } else {
+    io.emit('wa:send',{to:chat.phone,message:msg,mediaPath:upPath});
+    addMsg({fromMe:true,body:msg,timestamp:Date.now()/1000,id:'p'+Date.now()});
+  }
+  inp.value='';clearMedia();
+}
+
+// ── FILE ──────────────────────────────────────────────────────────────────────
+function onFile(inp){
+  const file=inp.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
+    upPath=d.path;
+    const prev=document.getElementById('mprev');
+    prev.classList.remove('hidden');
+    if(file.type.startsWith('image/')){document.getElementById('mprev-img').src=URL.createObjectURL(file);document.getElementById('mprev-name').textContent='';}
+    else{document.getElementById('mprev-img').src='';document.getElementById('mprev-name').textContent='📎 '+d.name;}
+  });
+}
+function clearMedia(){upPath=null;document.getElementById('mprev').classList.add('hidden');document.getElementById('mprev-img').src='';}
+function onBFile(inp){
+  const file=inp.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{bulkFPath=d.path;document.getElementById('bfn').textContent='📎 '+d.name;});
+}
+
+// ── BULK WA ───────────────────────────────────────────────────────────────────
+function openBulk(){
+  if(bulkSel.size===0)return toast('Select contacts first','e');
+  document.getElementById('bulk-ov').classList.add('on');
+  document.getElementById('qr-screen').classList.add('hidden');
+  document.getElementById('wa-active').classList.add('hidden');
+  document.getElementById('bovcnt').textContent=bulkSel.size+' recipients';
+  document.getElementById('bchips').innerHTML=[...bulkSel].map(id=>{
+    const c=AC.find(x=>x.id===id);
+    return c?`<div class="chip">${c.name}<span class="chip-rm" onclick="rmChip('${id}')">✕</span></div>`:'';
+  }).join('');
+  document.getElementById('bprog').innerHTML='';
+}
+function closeBulk(){
+  document.getElementById('bulk-ov').classList.remove('on');
+  if(waOk){document.getElementById('qr-screen').classList.add('hidden');document.getElementById('wa-active').classList.remove('hidden');}
+  else{document.getElementById('qr-screen').classList.remove('hidden');}
+}
+function rmChip(id){bulkSel.delete(id);document.getElementById(`bc-${id}`)?.classList.remove('on');document.getElementById(`bck-${id}`).checked=false;openBulk();}
+function doBulk(){
+  if(!waOk)return toast('WhatsApp not connected','e');
+  const msg=document.getElementById('bmsg').value.trim();
+  if(!msg&&!bulkFPath)return toast('Message empty','e');
+  const phones=[...bulkSel].map(id=>AC.find(c=>c.id===id)?.phone).filter(Boolean);
+  const dt=document.getElementById('bdt').value;
+  document.getElementById('bprog').innerHTML='';
+  if(dt)io.emit('wa:schedule',{recipients:phones,message:msg,datetime:dt,mediaPath:bulkFPath});
+  else io.emit('wa:bulk',{recipients:phones,message:msg,mediaPath:bulkFPath});
+}
+function toggleBulk(id,el){
+  if(bulkSel.has(id)){bulkSel.delete(id);el.classList.remove('on');document.getElementById(`bck-${id}`).checked=false;}
+  else{bulkSel.add(id);el.classList.add('on');document.getElementById(`bck-${id}`).checked=true;}
+  updBCnt();
+}
+function updBCnt(){document.getElementById('bsel-cnt').textContent=bulkSel.size+' selected';}
+function qSel(t){
+  bulkSel.clear();
+  if(t==='bms'||t==='all')C.bms.forEach(c=>bulkSel.add(c.id));
+  if(t==='agms'||t==='all')C.agms.forEach(c=>bulkSel.add(c.id));
+  AC.forEach(c=>{const on=bulkSel.has(c.id);document.getElementById(`bc-${c.id}`)?.classList[on?'add':'remove']('on');const ck=document.getElementById(`bck-${c.id}`);if(ck)ck.checked=on;});
+  updBCnt();
+}
+function clrSel(){bulkSel.clear();document.querySelectorAll('[id^=bc-]').forEach(el=>el.classList.remove('on'));document.querySelectorAll('[id^=bck-]').forEach(el=>el.checked=false);updBCnt();}
+
+// ── SMS ───────────────────────────────────────────────────────────────────────
+function selSmsC(c){
+  if(typeof c==='string')c=JSON.parse(c.replace(/'/g,'"'));
+  smsCur=c;
+  document.getElementById('ssel').textContent=c.name+' · '+c.phone;
+  document.querySelectorAll('.sms-conv').forEach(el=>el.classList.remove('on'));
+  document.getElementById(`sc-${c.id}`)?.classList.add('on');
+}
+function sendSmsI(){
+  if(!smsCur)return toast('Select a contact first','e');
+  const msg=document.getElementById('smsg').value.trim();
+  if(!msg)return toast('Message empty','e');
+  io.emit('sms:send',{to:smsCur.phone,message:msg});
+}
+function sSmsGrp(t,btn){
+  smsSel.clear();
+  document.querySelectorAll('.gm-pill').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  if(t==='bms'||t==='all')C.bms.forEach(c=>smsSel.add(c.id));
+  if(t==='agms'||t==='all')C.agms.forEach(c=>smsSel.add(c.id));
+  document.getElementById('sbsel').textContent=smsSel.size+' selected';
+}
+function sendBulkSms(){
+  if(smsSel.size===0)return toast('Select recipients','e');
+  const msg=document.getElementById('sbmsg').value.trim();
+  if(!msg)return toast('Message empty','e');
+  const phones=[...smsSel].map(id=>AC.find(c=>c.id===id)?.phone).filter(Boolean);
+  const dt=document.getElementById('sbdt').value;
+  document.getElementById('sprog').innerHTML='';
+  if(dt)io.emit('sms:schedule',{recipients:phones,message:msg,datetime:dt});
+  else io.emit('sms:bulk',{recipients:phones,message:msg});
+}
+function testGw(){toast('Testing SMS Gateway…','i');if(smsCur)io.emit('sms:send',{to:smsCur.phone,message:'Test from Sathya Messenger'});else toast('Select a contact first','e');}
+function addSmsLog(name,phone,msg,ok,err){
+  const log=document.getElementById('slog');
+  const e=log.querySelector('[style*="text-align:center"]');if(e)e.remove();
+  const d=document.createElement('div');d.className='sli';
+  d.innerHTML=`<div class="sli-to">${name} · ${phone}</div><div class="sli-msg">${(msg||'').substring(0,80)}</div><div class="sli-st ${ok?'ok':'er'}">${ok?'✓ Delivered':'✗ '+(err||'Failed')}</div>`;
+  log.prepend(d);
+}
+function filterSms(q){document.querySelectorAll('.sms-conv').forEach(el=>{el.style.display=el.querySelector('.sms-conv-name')?.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+
+// ── CONTACTS MANAGE ───────────────────────────────────────────────────────────
+function addC(){
+  const n=document.getElementById('nn').value.trim(),p=document.getElementById('np').value.trim(),r=document.getElementById('nr').value;
+  if(!n||!p)return toast('Fill name and phone','e');
+  const c={id:'c'+Date.now(),name:n,phone:p,role:r,avatar:''};
+  if(r==='AGM')C.agms.push(c);else C.bms.push(c);
+  AC=[...C.agms,...C.bms];renderAll();
+  document.getElementById('nn').value='';document.getElementById('np').value='';
+  toast(n+' added','s');
+}
+function removeC(id){
+  C.agms=C.agms.filter(c=>c.id!==id);C.bms=C.bms.filter(c=>c.id!==id);
+  AC=[...C.agms,...C.bms];renderAll();toast('Removed','i');
+}
+
+// ── GROUPS ────────────────────────────────────────────────────────────────────
+function openGModal(){
+  document.getElementById('mclist').innerHTML=AC.map(c=>`
+    <div class="ci" style="padding:6px 8px">${mkAv(c)}<div class="ci-info" style="flex:1"><div class="ci-name" style="font-size:13px">${c.name}</div></div><input type="checkbox" id="mg-${c.id}" style="width:16px;height:16px;accent-color:var(--wa-green)"></div>`).join('');
+  document.getElementById('gmo').classList.add('on');
+}
+function closeMo(id='gmo'){document.getElementById(id).classList.remove('on');}
+function createGrp(){
+  const n=document.getElementById('gname').value.trim();
+  if(!n)return toast('Enter group name','e');
+  const members=AC.filter(c=>document.getElementById(`mg-${c.id}`)?.checked).map(c=>c.id);
+  if(!members.length)return toast('Select members','e');
+  C.groups.push({id:'g'+Date.now(),name:n,members});
+  renderGroups();closeMo();toast(`Group "${n}" created`,'s');
+}
+
+// ── NAV / TABS ────────────────────────────────────────────────────────────────
+function wNav(n,btn){
+  document.querySelectorAll('.wa-pane').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('wp-'+n).classList.add('on');btn.classList.add('on');
+}
+function sTab(n,btn){
+  document.querySelectorAll('.sms-pane').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.gm-tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('sp-'+n).classList.add('on');btn.classList.add('on');
+}
+function filterC(q){document.querySelectorAll('#agm-list .ci,#bm-list .ci').forEach(el=>{el.style.display=el.querySelector('.ci-name')?.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function setWst(st,txt){const d=document.getElementById('wdot');document.getElementById('wst').textContent=txt;d.className='dot';if(st==='g')d.classList.add('g');}
+function waLogout(){if(confirm('Disconnect WhatsApp?'))io.emit('wa:logout');}
+function getName(phone){return AC.find(c=>c.phone===phone)?.name||phone;}
+function fmtDt(dt){return new Date(dt).toLocaleString();}
+function addProg(id,name,ok,err){const l=document.getElementById(id);const d=document.createElement('div');d.className='pi';d.innerHTML=`<span>${ok?'✅':'❌'}</span><span>${name}</span>${!ok&&err?`<span style="color:#f85149;font-size:10px">${err}</span>`:''}`;l.appendChild(d);}
+function b64Blob(b64,mime){const by=atob(b64);const arr=new Uint8Array(by.length);for(let i=0;i<by.length;i++)arr[i]=by.charCodeAt(i);return new Blob([arr],{type:mime});}
+function openLB(src){document.getElementById('lbimg').src=src;document.getElementById('lb').classList.add('on');}
+function toast(msg,t='i'){
+  const c=document.getElementById('tc');
+  const el=document.createElement('div');el.className=`t ${t}`;
+  el.innerHTML=`<span>${{s:'✓',e:'✗',i:'ℹ'}[t]||''}</span> ${msg}`;
+  c.appendChild(el);setTimeout(()=>el.remove(),3500);
+}
+function waToast(name,body){
+  const c=document.getElementById('tc');
+  const el=document.createElement('div');el.className='t i';
+  el.innerHTML=`<b>${name}:</b> ${(body||'').substring(0,50)}`;
+  c.appendChild(el);setTimeout(()=>el.remove(),5000);
+}
+// ── WA GROUPS FROM PHONE ──────────────────────────────────────────────────────
+io.on('wa:groups', groups => {
+  const list = document.getElementById('wa-groups-list');
+  if(!list)return;
+  if(!groups.length){list.innerHTML='<div style="padding:10px 16px;font-size:12px;color:var(--wa-text3)">No groups</div>';return;}
+  list.innerHTML=groups.map(g=>`
+    <div class="grp-row" onclick="openWAGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">
+      <div class="grp-av">👥</div>
+      <div class="ci-info"><div class="ci-name">${g.name}</div><div class="ci-sub">${g.members} members</div></div>
+      <button onclick="event.stopPropagation();exportGrp('${g.id}','${g.name.replace(/'/g,"\\'")}')" style="background:none;border:1px solid #3d5260;color:var(--wa-text2);border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;flex-shrink:0">📊</button>
+    </div>`).join('');
+});
+
+io.on('wa:notify',({name,body,isGroup})=>{
+  waToast((isGroup?'👥 ':'')+name, body);
+  try{
+    if(Notification.permission==='granted') new Notification((isGroup?'👥 ':'')+name,{body:(body||'').substring(0,80)});
+    const ac=new AudioContext(),o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.value=880;g.gain.setValueAtTime(.3,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.3);
+    o.start();o.stop(ac.currentTime+.3);
+  }catch(e){}
+});
+
+function openWAGroup(id,name){
+  chat={id,name,type:'wagroup',phone:id};
+  showActiveChat();
+  document.getElementById('chat-name').textContent=name;
+  document.getElementById('chat-sub').textContent='WhatsApp Group · 📊 to export';
+  const a=document.getElementById('chat-av');a.className='av';a.textContent='👥';
+  document.getElementById('msgs').innerHTML='';
+}
+let exportGid = null;
+function exportGrp(gid, name) {
+  exportGid = gid;
+  document.getElementById('exp-grp-name').textContent = name || gid;
+  setRange('7');
+  document.getElementById('exp-mo').classList.add('on');
+}
+function setRange(r) {
+  const today = new Date().toISOString().split('T')[0];
+  const fromEl = document.getElementById('exp-from');
+  const toEl = document.getElementById('exp-to');
+  toEl.value = today;
+  if (r === 'today') fromEl.value = today;
+  else if (r === '7') { const d=new Date();d.setDate(d.getDate()-7);fromEl.value=d.toISOString().split('T')[0]; }
+  else if (r === '30') { const d=new Date();d.setDate(d.getDate()-30);fromEl.value=d.toISOString().split('T')[0]; }
+  else { fromEl.value=''; toEl.value=''; }
+}
+function doExport() {
+  if (!exportGid) return;
+  const from = document.getElementById('exp-from').value;
+  const to = document.getElementById('exp-to').value;
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  window.open(`/export/${encodeURIComponent(exportGid)}?${params}`, '_blank');
+  toast('Downloading Excel…', 's');
+  closeMo('exp-mo');
+}
+// ── CHAT EXPORT ───────────────────────────────────────────────────────────────
+function openExport(){
+  if(!chat)return toast('Open a chat first','e');
+  document.getElementById('exp-name').textContent=chat.name||'';
+  setExpRange('today',document.querySelector('#expmo .qpill'));
+  document.getElementById('expmo').classList.add('on');
+}
+function setExpRange(r,btn){
+  document.querySelectorAll('#expmo .qpill').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  const now=new Date(),fmt=d=>d.toISOString().slice(0,16);
+  if(r==='today'){const s=new Date(now.getFullYear(),now.getMonth(),now.getDate());document.getElementById('exp-from').value=fmt(s);document.getElementById('exp-to').value=fmt(now);}
+  else if(r==='week'){document.getElementById('exp-from').value=fmt(new Date(now-7*24*60*60*1000));document.getElementById('exp-to').value=fmt(now);}
+  else{document.getElementById('exp-from').value='';document.getElementById('exp-to').value='';}
+}
+function doExport(){
+  if(!chat)return;
+  const jid=(chat.phone||'').replace('+','')+'@s.whatsapp.net';
+  const from=document.getElementById('exp-from').value;
+  const to=document.getElementById('exp-to').value;
+  const limit=document.getElementById('exp-limit').value||500;
+  let url=`/export?userId=${encodeURIComponent(userId)}&jid=${encodeURIComponent(jid)}&limit=${limit}`;
+  if(from)url+=`&from=${Math.floor(new Date(from).getTime()/1000)}`;
+  if(to)url+=`&to=${Math.floor(new Date(to).getTime()/1000)}`;
+  window.open(url,'_blank');
+  closeMo('expmo');
+  toast('Downloading Excel…','s');
+}
+</script>

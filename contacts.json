@@ -1,0 +1,53 @@
+{
+  "agms": [
+    { "id": "agm1", "name": "AGM Seenivasan KVP", "phone": "+919677129985", "role": "AGM", "avatar": "" },
+    { "id": "agm2", "name": "AGM Jeeva Nagercoil", "phone": "+918925561985", "role": "AGM", "avatar": "" },
+    { "id": "agm3", "name": "AGM John Tirunelveli", "phone": "+919894037985", "role": "AGM", "avatar": "" },
+    { "id": "agm4", "name": "AGM Siva Tuticorin", "phone": "+919994976985", "role": "AGM", "avatar": "" },
+    { "id": "agm5", "name": "AGM Venkatesh Virudunagar", "phone": "+919994493985", "role": "AGM", "avatar": "" },
+    { "id": "agm6", "name": "AGM Muthuselvam Tenkasi", "phone": "+919840587985", "role": "AGM", "avatar": "" }
+  ],
+  "bms": [
+    { "id": "bm1", "name": "Sengottai BM", "phone": "+917358117985", "role": "BM", "avatar": "" },
+    { "id": "bm2", "name": "Sankarankoil BM", "phone": "+919500639985", "role": "BM", "avatar": "" },
+    { "id": "bm3", "name": "Kulasekharam BM", "phone": "+917418880985", "role": "BM", "avatar": "" },
+    { "id": "bm4", "name": "Arupukottai2 BM", "phone": "+919566415985", "role": "BM", "avatar": "" },
+    { "id": "bm5", "name": "Sivakasi BM", "phone": "+919894047985", "role": "BM", "avatar": "" },
+    { "id": "bm6", "name": "Arupukottai1 BM", "phone": "+919600068985", "role": "BM", "avatar": "" },
+    { "id": "bm7", "name": "Mondaymarket BM", "phone": "+917338823985", "role": "BM", "avatar": "" },
+    { "id": "bm8", "name": "Thisayanvilai BM", "phone": "+919629280985", "role": "BM", "avatar": "" },
+    { "id": "bm9", "name": "Kayathar BM", "phone": "+917845131985", "role": "BM", "avatar": "" },
+    { "id": "bm10", "name": "Anjugramam BM", "phone": "+917845292985", "role": "BM", "avatar": "" },
+    { "id": "bm11", "name": "Vilathikulam BM", "phone": "+919894784985", "role": "BM", "avatar": "" },
+    { "id": "bm12", "name": "Thuckalay BM", "phone": "+919500134985", "role": "BM", "avatar": "" },
+    { "id": "bm13", "name": "Tuticorin1 BM", "phone": "+919790156985", "role": "BM", "avatar": "" },
+    { "id": "bm14", "name": "Rajapalayam BM", "phone": "+919840844985", "role": "BM", "avatar": "" },
+    { "id": "bm15", "name": "Ramnad BM", "phone": "+919003921985", "role": "BM", "avatar": "" },
+    { "id": "bm16", "name": "Sattur BM", "phone": "+918056301985", "role": "BM", "avatar": "" },
+    { "id": "bm17", "name": "Karungal BM", "phone": "+919840945985", "role": "BM", "avatar": "" },
+    { "id": "bm18", "name": "Thiruchendur BM", "phone": "+919092099985", "role": "BM", "avatar": "" },
+    { "id": "bm19", "name": "Ramesh Thuckalay BM", "phone": "+919894862756", "role": "BM", "avatar": "" },
+    { "id": "bm20", "name": "Tirunelveli BM", "phone": "+917708007985", "role": "BM", "avatar": "" },
+    { "id": "bm21", "name": "Surandai BM", "phone": "+919840413985", "role": "BM", "avatar": "" },
+    { "id": "bm22", "name": "Tuticorin2 BM", "phone": "+919789344985", "role": "BM", "avatar": "" },
+    { "id": "bm23", "name": "Virudunagar2 BM", "phone": "+919994948985", "role": "BM", "avatar": "" },
+    { "id": "bm24", "name": "Paramakudi BM", "phone": "+917639983201", "role": "BM", "avatar": "" },
+    { "id": "bm25", "name": "Sayalkudi BM", "phone": "+919952132985", "role": "BM", "avatar": "" },
+    { "id": "bm26", "name": "Nagercoil BM", "phone": "+919677408985", "role": "BM", "avatar": "" },
+    { "id": "bm27", "name": "Ambai BM", "phone": "+919840257985", "role": "BM", "avatar": "" },
+    { "id": "bm28", "name": "Kovilpatti BM", "phone": "+919994452985", "role": "BM", "avatar": "" },
+    { "id": "bm29", "name": "Colachel BM", "phone": "+919994384985", "role": "BM", "avatar": "" },
+    { "id": "bm30", "name": "Valliyur BM", "phone": "+919791938985", "role": "BM", "avatar": "" },
+    { "id": "bm31", "name": "Tenkasi2 BM", "phone": "+917845398985", "role": "BM", "avatar": "" },
+    { "id": "bm32", "name": "Marthandam BM", "phone": "+919789444985", "role": "BM", "avatar": "" },
+    { "id": "bm33", "name": "Udangudi BM", "phone": "+919952405985", "role": "BM", "avatar": "" },
+    { "id": "bm34", "name": "Tenkasi1 BM", "phone": "+919894791985", "role": "BM", "avatar": "" },
+    { "id": "bm35", "name": "Eral BM", "phone": "+918870013985", "role": "BM", "avatar": "" },
+    { "id": "bm36", "name": "Virudunagar1 BM", "phone": "+917305956985", "role": "BM", "avatar": "" }
+  ],
+  "groups": [
+    { "id": "grp_all_bms", "name": "All BMs", "members": ["bm1","bm2","bm3","bm4","bm5","bm6","bm7","bm8","bm9","bm10","bm11","bm12","bm13","bm14","bm15","bm16","bm17","bm18","bm19","bm20","bm21","bm22","bm23","bm24","bm25","bm26","bm27","bm28","bm29","bm30","bm31","bm32","bm33","bm34","bm35","bm36"] },
+    { "id": "grp_all_agms", "name": "All AGMs", "members": ["agm1","agm2","agm3","agm4","agm5","agm6"] },
+    { "id": "grp_everyone", "name": "Everyone (BMs + AGMs)", "members": ["agm1","agm2","agm3","agm4","agm5","agm6","bm1","bm2","bm3","bm4","bm5","bm6","bm7","bm8","bm9","bm10","bm11","bm12","bm13","bm14","bm15","bm16","bm17","bm18","bm19","bm20","bm21","bm22","bm23","bm24","bm25","bm26","bm27","bm28","bm29","bm30","bm31","bm32","bm33","bm34","bm35","bm36"] }
+  ]
+}

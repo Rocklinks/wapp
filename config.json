@@ -1,0 +1,9 @@
+{
+  "sms_gateway_url": "http://192.168.1.100:8080",
+  "sms_gateway_user": "admin",
+  "sms_gateway_pass": "admin",
+  "wa_message_delay_ms": 2000,
+  "sms_message_delay_ms": 3000,
+  "server_port": 8080,
+  "fly_app_url": "https://sathya-messenger.fly.dev"
+}
